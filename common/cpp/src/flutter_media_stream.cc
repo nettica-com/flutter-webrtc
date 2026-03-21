@@ -145,8 +145,8 @@ void FlutterMediaStream::GetUserAudio(const EncodableMap& constraints,
   // deviceId
 
   if (enable_audio) {
-    char strRecordingName[256];
-    char strRecordingGuid[256];
+    char strRecordingName[256] = {0};
+    char strRecordingGuid[256] = {0};
     int playout_devices = base_->audio_device_->PlayoutDevices();
     int recording_devices = base_->audio_device_->RecordingDevices();
 
@@ -168,8 +168,8 @@ void FlutterMediaStream::GetUserAudio(const EncodableMap& constraints,
                                                   strRecordingGuid);
     }
 
-    char strPlayoutName[256];
-    char strPlayoutGuid[256];
+    char strPlayoutName[256] = {0};
+    char strPlayoutGuid[256] = {0};
     for (uint16_t i = 0; i < playout_devices; i++) {
       base_->audio_device_->PlayoutDeviceName(i, strPlayoutName,
                                               strPlayoutGuid);
@@ -290,8 +290,8 @@ void FlutterMediaStream::GetUserVideo(const EncodableMap& constraints,
     fpsValue = findEncodableValue(video_mandatory, "frameRate");
 
   scoped_refptr<RTCVideoCapturer> video_capturer;
-  char strNameUTF8[256];
-  char strGuidUTF8[256];
+  char strNameUTF8[256] = {0};
+  char strGuidUTF8[256] = {0};
   int nb_video_devices = base_->video_device_->NumberOfDevices();
 
   int32_t width = toInt(widthValue, DEFAULT_WIDTH);
