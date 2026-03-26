@@ -141,8 +141,27 @@ NSArray<RTCDesktopSource*>* _captureSources;
   }
   if (useScreenCaptureKit) {
     if (@available(macOS 12.3, *)) {
+      __weak typeof(self) weakSelf = self;
       screenCaptureKitCapturer =
           [[FlutterScreenCaptureKitCapturer alloc] initWithDelegate:videoProcessingAdapter];
+      // Bubble external macOS stop events back through the desktop capturer
+      // event channel so Dart can restore the previous video source.
+      screenCaptureKitCapturer.onCaptureStopped = ^(NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf == nil) {
+          return;
+        }
+
+        NSLog(@"ScreenCaptureKit capture stopped: %@", error.localizedDescription ?: @"no error");
+        NSMutableDictionary *event = [@{
+          @"event" : @"desktopCaptureStopped",
+          @"trackId" : trackUUID,
+        } mutableCopy];
+        if (error.localizedDescription.length > 0) {
+          event[@"error"] = error.localizedDescription;
+        }
+        postEvent(strongSelf.eventSink, event);
+      };
       [screenCaptureKitCapturer startCaptureWithFPS:fps
                                            sourceId:sourceId
                                           onStarted:^(NSError * _Nullable error) {

@@ -58,6 +58,7 @@ abstract class DesktopCapturer {
       throw UnimplementedError();
   StreamController<DesktopCapturerSource> get onThumbnailChanged =>
       throw UnimplementedError();
+  StreamController<String> get onCaptureStopped => throw UnimplementedError();
 
   ///Get the screen source of the specified types
   Future<List<DesktopCapturerSource>> getSources({
