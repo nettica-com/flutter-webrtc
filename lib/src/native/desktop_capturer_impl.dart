@@ -95,6 +95,11 @@ class DesktopCapturerNative extends DesktopCapturer {
   final StreamController<DesktopCapturerSource> _onThumbnailChanged =
       StreamController.broadcast(sync: true);
 
+  @override
+  StreamController<String> get onCaptureStopped => _onCaptureStopped;
+  final StreamController<String> _onCaptureStopped =
+      StreamController.broadcast(sync: true);
+
   final Map<String, DesktopCapturerSourceNative> _sources = {};
 
   void handleEvent(String event, Map<dynamic, dynamic> map) async {
@@ -130,6 +135,12 @@ class DesktopCapturerNative extends DesktopCapturer {
           source.name = map['name'];
           _onNameChanged.add(source);
           source.onNameChanged.add(source.name);
+        }
+        break;
+      case 'desktopCaptureStopped':
+        final trackId = map['trackId'] as String?;
+        if (trackId != null) {
+          _onCaptureStopped.add(trackId);
         }
         break;
     }

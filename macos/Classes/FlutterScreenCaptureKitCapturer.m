@@ -9,7 +9,7 @@
 
 @interface FlutterScreenCaptureKitCapturer ()
 #if __has_include(<ScreenCaptureKit/ScreenCaptureKit.h>)
-<SCStreamOutput>
+<SCStreamOutput, SCStreamDelegate>
 #endif
 @property(nonatomic, strong) RTCVideoCapturer *capturer;
 @property(nonatomic, weak) id<RTCVideoCapturerDelegate> delegate;
@@ -17,6 +17,8 @@
 #if __has_include(<ScreenCaptureKit/ScreenCaptureKit.h>)
 @property(nonatomic, strong) SCStream *stream;
 #endif
+@property(nonatomic, assign) BOOL shouldNotifyOnStop;
+@property(nonatomic, assign) BOOL didNotifyStop;
 @end
 
 @implementation FlutterScreenCaptureKitCapturer
@@ -27,6 +29,8 @@
     _delegate = delegate;
     _capturer = [[RTCVideoCapturer alloc] initWithDelegate:delegate];
     _captureQueue = dispatch_queue_create("com.iperius.sck.capture", DISPATCH_QUEUE_SERIAL);
+    _shouldNotifyOnStop = YES;
+    _didNotifyStop = NO;
   }
   return self;
 }
@@ -61,7 +65,9 @@
         config.showsCursor = YES;
       }
 
-      self.stream = [[SCStream alloc] initWithFilter:filter configuration:config delegate:nil];
+      self.shouldNotifyOnStop = YES;
+      self.didNotifyStop = NO;
+      self.stream = [[SCStream alloc] initWithFilter:filter configuration:config delegate:self];
       NSError *addOutputError = nil;
       [self.stream addStreamOutput:self
                               type:SCStreamOutputTypeScreen
@@ -93,6 +99,8 @@
       completion();
       return;
     }
+    self.shouldNotifyOnStop = NO;
+    self.didNotifyStop = YES;
     SCStream *stream = self.stream;
     self.stream = nil;
     [stream stopCaptureWithCompletionHandler:^(__unused NSError * _Nullable error) {
@@ -105,6 +113,24 @@
 }
 
 #if __has_include(<ScreenCaptureKit/ScreenCaptureKit.h>)
+- (void)notifyCaptureStopped:(NSError * _Nullable)error API_AVAILABLE(macos(12.3)) {
+  // ScreenCaptureKit can terminate the stream without going through the normal
+  // explicit stop path, so guard and forward that transition once.
+  if (!self.shouldNotifyOnStop || self.didNotifyStop) {
+    return;
+  }
+
+  self.didNotifyStop = YES;
+  FlutterScreenCaptureKitStopHandler onCaptureStopped = self.onCaptureStopped;
+  if (onCaptureStopped == nil) {
+    return;
+  }
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    onCaptureStopped(error);
+  });
+}
+
 - (SCDisplay *)selectDisplayFromContent:(SCShareableContent *)content
                                sourceId:(NSString *)sourceId API_AVAILABLE(macos(12.3)) {
   if (content.displays.count == 0) {
@@ -149,6 +175,25 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                                                       rotation:RTCVideoRotation_0
                                                    timeStampNs:timeStampNs];
   [self.delegate capturer:self.capturer didCaptureVideoFrame:frame];
+}
+
+- (void)stream:(SCStream *)stream didStopWithError:(NSError *)error API_AVAILABLE(macos(12.3)) {
+  if (self.stream == stream) {
+    self.stream = nil;
+  }
+  [self notifyCaptureStopped:error];
+}
+
+- (void)streamDidBecomeInactive:(SCStream *)stream API_AVAILABLE(macos(15.2)) {
+  if (self.stream == stream) {
+    self.stream = nil;
+  }
+  NSError *inactiveError = [NSError errorWithDomain:@"FlutterScreenCaptureKit"
+                                               code:-3
+                                           userInfo:@{
+                                             NSLocalizedDescriptionKey : @"Screen capture became inactive"
+                                           }];
+  [self notifyCaptureStopped:inactiveError];
 }
 #endif
 
