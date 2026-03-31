@@ -374,8 +374,8 @@ void FlutterMediaStream::GetSources(std::unique_ptr<MethodResultProxy> result) {
 void FlutterMediaStream::SelectAudioOutput(
     const std::string& device_id,
     std::unique_ptr<MethodResultProxy> result) {
-  char deviceName[256];
-  char deviceGuid[256];
+  char deviceName[256] = {0};
+  char deviceGuid[256] = {0};
   int playout_devices = base_->audio_device_->PlayoutDevices();
   bool found = false;
   for (uint16_t i = 0; i < playout_devices; i++) {
@@ -399,8 +399,8 @@ void FlutterMediaStream::SelectAudioOutput(
 void FlutterMediaStream::SelectAudioInput(
     const std::string& device_id,
     std::unique_ptr<MethodResultProxy> result) {
-  char deviceName[256];
-  char deviceGuid[256];
+  char deviceName[256] = {0};
+  char deviceGuid[256] = {0};
   int playout_devices = base_->audio_device_->RecordingDevices();
   bool found = false;
   for (uint16_t i = 0; i < playout_devices; i++) {
