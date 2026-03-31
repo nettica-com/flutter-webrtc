@@ -35,6 +35,7 @@ public class FlutterWebRTCPlugin implements FlutterPlugin, ActivityAware, EventC
 
     static public final String TAG = "FlutterWebRTCPlugin";
     private static Application application;
+    private static int engineAttachCount = 0;
 
     private MethodChannel methodChannel;
     private MethodCallHandlerImpl methodCallHandler;
@@ -112,7 +113,10 @@ public class FlutterWebRTCPlugin implements FlutterPlugin, ActivityAware, EventC
 
     private void startListening(final Context context, BinaryMessenger messenger,
                                 TextureRegistry textureRegistry) {
-        AudioSwitchManager.instance = new AudioSwitchManager(context);
+        engineAttachCount++;
+        if (AudioSwitchManager.instance == null) {
+            AudioSwitchManager.instance = new AudioSwitchManager(context);
+        }
         methodCallHandler = new MethodCallHandlerImpl(context, messenger, textureRegistry);
         methodChannel = new MethodChannel(messenger, "FlutterWebRTC.Method");
         methodChannel.setMethodCallHandler(methodCallHandler);
@@ -132,9 +136,12 @@ public class FlutterWebRTCPlugin implements FlutterPlugin, ActivityAware, EventC
         methodCallHandler = null;
         methodChannel.setMethodCallHandler(null);
         eventChannel.setStreamHandler(null);
-        if (AudioSwitchManager.instance != null) {
+        engineAttachCount--;
+        if (engineAttachCount <= 0 && AudioSwitchManager.instance != null) {
             Log.d(TAG, "Stopping the audio manager...");
             AudioSwitchManager.instance.stop();
+            AudioSwitchManager.instance = null;
+            engineAttachCount = 0;
         }
     }
 
